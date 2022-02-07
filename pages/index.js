@@ -11,21 +11,22 @@ import {
 import styles from "../styles/Home.module.css";
 
 export default function Home() {
-
   // Create a BigNumber `0`
   const zero = BigNumber.from(0);
   // walletConnected keeps track of whether the user's wallet is connected or not
   const [walletConnected, setWalletConnected] = useState(false);
-  //loading keeps track of when a transaction is getting mined
+  // loading is set to true when we are waiting for a transaction to get mined
   const [loading, setLoading] = useState(false);
-  //tokensToBeClaimed keeps track of the amount of tokens that can be claimed 
-  //based on the NFTs owned by the user for which the tokens are unclaimed
+  // tokensToBeClaimed keeps track of the number of tokens that can be claimed
+  // based on the Crypto Dev NFT's held by the user for which they havent claimed the tokens
   const [tokensToBeClaimed, setTokensToBeClaimed] = useState(zero);
-  //balanceOfCryptoDevTokens keeps track of number of Crypto Dev tokens owned by an address
-  const [balanceOfCryptoDevTokens, setBalanceOfCryptoDevTokens] = useState(zero);
+  // balanceOfCryptoDevTokens keeps track of number of Crypto Dev tokens owned by an address
+  const [balanceOfCryptoDevTokens, setBalanceOfCryptoDevTokens] = useState(
+    zero
+  );
   // amount of the tokens that the user wants to mint
   const [tokenAmount, setTokenAmount] = useState(zero);
-  // tokensMinted is the total number of tokens that have been minted till now
+  // tokensMinted is the total number of tokens that have been minted till now out of 10000(max total supply)
   const [tokensMinted, setTokensMinted] = useState(zero);
   // Create a reference to the Web3 Modal (used for connecting to Metamask) which persists as long as the page is open
   const web3ModalRef = useRef();
@@ -44,7 +45,7 @@ export default function Home() {
         NFT_CONTRACT_ABI,
         provider
       );
-      // Create an instance of token Contract
+      // Create an instance of tokenContract
       const tokenContract = new Contract(
         TOKEN_CONTRACT_ADDRESS,
         TOKEN_CONTRACT_ABI,
@@ -53,7 +54,7 @@ export default function Home() {
       // We will get the signer now to extract the address of the currently connected MetaMask account
       const signer = await getProviderOrSigner(true);
       // Get the address associated to the signer which is connected to  MetaMask
-      const address = signer.getAddress();
+      const address = await signer.getAddress();
       // call the balanceOf from the NFT contract to get the number of NFT's held by the user
       const balance = await nftContract.balanceOf(address);
       // balance is a Big number and thus we would compare it with Big number `zero`
@@ -90,6 +91,7 @@ export default function Home() {
       // Get the provider from web3Modal, which in our case is MetaMask
       // No need for the Signer here, as we are only reading state from the blockchain
       const provider = await getProviderOrSigner();
+      // Create an instace of token contract
       const tokenContract = new Contract(
         TOKEN_CONTRACT_ADDRESS,
         TOKEN_CONTRACT_ABI,
@@ -98,7 +100,7 @@ export default function Home() {
       // We will get the signer now to extract the address of the currently connected MetaMask account
       const signer = await getProviderOrSigner(true);
       // Get the address associated to the signer which is connected to  MetaMask
-      const address = signer.getAddress();
+      const address = await signer.getAddress();
       // call the balanceOf from the token contract to get the number of tokens held by the user
       const balance = await tokenContract.balanceOf(address);
       // balance is already a big number, so we dont need to convert it before setting it
@@ -109,38 +111,39 @@ export default function Home() {
     }
   };
 
+  /**
+   * mintCryptoDevToken: mints `amount` number of tokens to a given address
+   */
   const mintCryptoDevToken = async (amount) => {
     try {
-      if(amount){
-          setLoading(true);
-          let amt = BigNumber.from(amount);
-          // Get the signer from web3Modal, which in our case is MetaMask
-          const signer = await getProviderOrSigner(true);
-          // Create an instance of token contract
-          const tokenContract = new Contract(
-            TOKEN_CONTRACT_ADDRESS,
-            TOKEN_CONTRACT_ABI,
-            signer
-          );
-          // Each token is of `0.001 ether`. The value we need to send is `0.001 * amount`
-          const value = 0.001 * amount;
-          const tx = await tokenContract.mint(amount, {
-            // value signifies the cost of one crypto dev token which is "0.001" eth.
-            // We are parsing `0.001` string to ether using the utils library from ethers.js
-            value: utils.parseEther(value.toString()),
-          });
-          //chill for the transaction to get mined
-          tx.wait();
-          
-          await getBalanceOfCryptoDevTokens();
-          await getTotalTokensMinted();
-          await getTokensToBeClaimed();
-          setLoading(false);
-          window.alert("Sucessfully minted Crypto Dev Tokens");
-      };
-    } catch (err) {
-      console.error(err);
+      setLoading(true);
+      let amt = BigNumber.from(amount);
+      // We need a Signer here since this is a 'write' transaction.
+      // Create an instance of tokenContract
+      const signer = await getProviderOrSigner(true);
+      // Create an instance of tokenContract
+      const tokenContract = new Contract(
+        TOKEN_CONTRACT_ADDRESS,
+        TOKEN_CONTRACT_ABI,
+        signer
+      );
+      // Each token is of `0.001 ether`. The value we need to send is `0.001 * amount`
+      const value = 0.001 * amt;
+      const tx = await tokenContract.mint(amt, {
+        // value signifies the cost of one crypto dev token which is "0.001" eth.
+        // We are parsing `0.001` string to ether using the utils library from ethers.js
+        value: utils.parseEther(value.toString()),
+      });
+      // wait for the transaction to get mined
+      await tx.wait();
       setLoading(false);
+      window.alert("Sucessfully minted Crypto Dev Tokens");
+      await getBalanceOfCryptoDevTokens();
+      await getTotalTokensMinted();
+      await getTokensToBeClaimed();
+    } catch (err) {
+      setLoading(false);
+      console.error(err);
     }
   };
 
@@ -149,27 +152,27 @@ export default function Home() {
    */
   const claimCryptoDevTokens = async () => {
     try {
-      // Get the signer from web3Modal, which in our case is MetaMask
+      setLoading(true);
+      // We need a Signer here since this is a 'write' transaction.
+      // Create an instance of tokenContract
       const signer = await getProviderOrSigner(true);
-      // Create an instance of token contract
+      // Create an instance of tokenContract
       const tokenContract = new Contract(
         TOKEN_CONTRACT_ADDRESS,
         TOKEN_CONTRACT_ABI,
         signer
       );
       const tx = await tokenContract.claim();
-      setLoading(true);
       // wait for the transaction to get mined
       await tx.wait();
-      
+      setLoading(false);
+      window.alert("Sucessfully claimed Crypto Dev Tokens");
       await getBalanceOfCryptoDevTokens();
       await getTotalTokensMinted();
       await getTokensToBeClaimed();
-      setLoading(false);
-      window.alert("Sucessfully claimed Crypto Dev Tokens");
     } catch (err) {
-      console.log(err);
       setLoading(false);
+      console.error(err);
     }
   };
 
@@ -182,6 +185,7 @@ export default function Home() {
       // Get the provider from web3Modal, which in our case is MetaMask
       // No need for the Signer here, as we are only reading state from the blockchain
       const provider = await getProviderOrSigner();
+      // Create an instance of token contract
       const tokenContract = new Contract(
         TOKEN_CONTRACT_ADDRESS,
         TOKEN_CONTRACT_ABI,
@@ -194,7 +198,6 @@ export default function Home() {
       console.error(err);
     }
   };
-
   /**
    * Returns a Provider or Signer object representing the Ethereum RPC with or without the
    * signing capabilities of metamask attached
@@ -212,7 +215,8 @@ export default function Home() {
     // Since we store `web3Modal` as a reference, we need to access the `current` value to get access to the underlying object
     const provider = await web3ModalRef.current.connect();
     const web3Provider = new providers.Web3Provider(provider);
-    //Make sure the user is connected to Rinkeby Network
+
+    // If user is not connected to the Rinkeby network, let them know and throw an error
     const { chainId } = await web3Provider.getNetwork();
     if (chainId !== 4) {
       window.alert("Change the network to Rinkeby");
@@ -227,10 +231,12 @@ export default function Home() {
   };
 
   /*
-    connectWallet: Connects the MetaMask wallet
-  */
+        connectWallet: Connects the MetaMask wallet
+      */
   const connectWallet = async () => {
     try {
+      // Get the provider from web3Modal, which in our case is MetaMask
+      // When used for the first time, it prompts the user to connect their wallet
       await getProviderOrSigner();
       setWalletConnected(true);
     } catch (err) {
@@ -238,27 +244,29 @@ export default function Home() {
     }
   };
 
+  // useEffects are used to react to changes in state of the website
+  // The array at the end of function call represents what state changes will trigger this effect
+  // In this case, whenever the value of `walletConnected` changes - this effect will be called
   useEffect(() => {
+    // if wallet is not connected, create a new instance of Web3Modal and connect the MetaMask wallet
     if (!walletConnected) {
+      // Assign the Web3Modal class to the reference object by setting it's `current` value
+      // The `current` value is persisted throughout as long as this page is open
       web3ModalRef.current = new Web3Modal({
-        network: "Rinkeby",
+        network: "rinkeby",
         providerOptions: {},
         disableInjectedProvider: false,
       });
       connectWallet();
-      setLoading(true);
       getTotalTokensMinted();
       getBalanceOfCryptoDevTokens();
       getTokensToBeClaimed();
-      setLoading(false);
     }
-  }, [walletConnected, tokensMinted, balanceOfCryptoDevTokens ]);
+  }, [walletConnected]);
 
-  // useEffect(()=>{
-  //     getTotalTokensMinted();
-  //     getBalanceOfCryptoDevTokens();
-  // }, [ tokensMinted, balanceOfCryptoDevTokens ]);
-
+  /*
+        renderButton: Returns a button based on the state of the dapp
+      */
   const renderButton = () => {
     // If we are currently waiting for something, return a loading button
     if (loading) {
@@ -268,7 +276,6 @@ export default function Home() {
         </div>
       );
     }
-
     // If tokens to be claimed are greater than 0, Return a claim button
     if (tokensToBeClaimed > 0) {
       return (
@@ -282,7 +289,7 @@ export default function Home() {
         </div>
       );
     }
-
+    // If user doesn't have any tokens to claim, show the mint button
     return (
       <div style={{ display: "flex-col" }}>
         <div>
@@ -304,7 +311,7 @@ export default function Home() {
         </button>
       </div>
     );
-  }
+  };
 
   return (
     <div>
@@ -344,8 +351,8 @@ export default function Home() {
       </div>
 
       <footer className={styles.footer}>
-        Made with &#10084; by Crypto Devs
+        Made with &#10084; Val
       </footer>
     </div>
   );
-};
+}
