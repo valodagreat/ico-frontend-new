@@ -13,7 +13,7 @@ import styles from "../styles/Home.module.css";
 export default function Home() {
 
   // Create a BigNumber `0`
-  const zero = BigNumber.from(0);;
+  const zero = BigNumber.from(0);
   // walletConnected keeps track of whether the user's wallet is connected or not
   const [walletConnected, setWalletConnected] = useState(false);
   //loading keeps track of when a transaction is getting mined
@@ -111,31 +111,36 @@ export default function Home() {
 
   const mintCryptoDevToken = async (amount) => {
     try {
-      // Get the signer from web3Modal, which in our case is MetaMask
-      const signer = await getProviderOrSigner(true);
-      // Create an instance of token contract
-      const tokenContract = new Contract(
-        TOKEN_CONTRACT_ADDRESS,
-        TOKEN_CONTRACT_ABI,
-        signer
-      );
-      // Each token is of `0.001 ether`. The value we need to send is `0.001 * amount`
-      const value = 0.001 * amount;
-      const tx = await tokenContract.mint(amount, {
-        // value signifies the cost of one crypto dev token which is "0.001" eth.
-        // We are parsing `0.001` string to ether using the utils library from ethers.js
-        value: utils.parseEther(value.toString()),
-      });
-      setLoading(true);
-      //chill for the transaction to get mined
-      tx.wait();
-      setLoading(false);
-      window.alert("Sucessfully minted Crypto Dev Tokens");
-      await getBalanceOfCryptoDevTokens();
-      await getTotalTokensMinted();
-      await getTokensToBeClaimed();
+      if(amount){
+          setLoading(true);
+          let amt = BigNumber.from(amount);
+          // Get the signer from web3Modal, which in our case is MetaMask
+          const signer = await getProviderOrSigner(true);
+          // Create an instance of token contract
+          const tokenContract = new Contract(
+            TOKEN_CONTRACT_ADDRESS,
+            TOKEN_CONTRACT_ABI,
+            signer
+          );
+          // Each token is of `0.001 ether`. The value we need to send is `0.001 * amount`
+          const value = 0.001 * amount;
+          const tx = await tokenContract.mint(amount, {
+            // value signifies the cost of one crypto dev token which is "0.001" eth.
+            // We are parsing `0.001` string to ether using the utils library from ethers.js
+            value: utils.parseEther(value.toString()),
+          });
+          //chill for the transaction to get mined
+          tx.wait();
+          
+          await getBalanceOfCryptoDevTokens();
+          await getTotalTokensMinted();
+          await getTokensToBeClaimed();
+          setLoading(false);
+          window.alert("Sucessfully minted Crypto Dev Tokens");
+      };
     } catch (err) {
       console.error(err);
+      setLoading(false);
     }
   };
 
@@ -156,13 +161,15 @@ export default function Home() {
       setLoading(true);
       // wait for the transaction to get mined
       await tx.wait();
-      setLoading(false);
-      window.alert("Sucessfully claimed Crypto Dev Tokens");
+      
       await getBalanceOfCryptoDevTokens();
       await getTotalTokensMinted();
       await getTokensToBeClaimed();
+      setLoading(false);
+      window.alert("Sucessfully claimed Crypto Dev Tokens");
     } catch (err) {
       console.log(err);
+      setLoading(false);
     }
   };
 
@@ -239,11 +246,18 @@ export default function Home() {
         disableInjectedProvider: false,
       });
       connectWallet();
+      setLoading(true);
       getTotalTokensMinted();
       getBalanceOfCryptoDevTokens();
       getTokensToBeClaimed();
+      setLoading(false);
     }
-  }, [walletConnected]);
+  }, [walletConnected, tokensMinted, balanceOfCryptoDevTokens ]);
+
+  // useEffect(()=>{
+  //     getTotalTokensMinted();
+  //     getBalanceOfCryptoDevTokens();
+  // }, [ tokensMinted, balanceOfCryptoDevTokens ]);
 
   const renderButton = () => {
     // If we are currently waiting for something, return a loading button
@@ -276,7 +290,7 @@ export default function Home() {
             type="number"
             placeholder="Amount of Tokens"
             // BigNumber.from converts the `e.target.value` to a BigNumber
-            onChange={(e) => setTokenAmount(BigNumber.from(e.target.value))}
+            onChange={(e) => setTokenAmount(e.target.value)}
             className={styles.input}
           />
         </div>
