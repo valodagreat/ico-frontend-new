@@ -326,6 +326,7 @@ export default function Home() {
           <div className={styles.description}>
             You can claim or mint Crypto Dev tokens here
           </div>
+          <p className={styles.description} >Contact Address: 0x745d4599a03D672cEF2887F1D73d50e2790358d5</p>
           {walletConnected ? (
             <div>
               <div className={styles.description}>
