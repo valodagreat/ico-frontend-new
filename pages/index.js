@@ -247,7 +247,7 @@ export default function Home() {
   // useEffects are used to react to changes in state of the website
   // The array at the end of function call represents what state changes will trigger this effect
   // In this case, whenever the value of `walletConnected` changes - this effect will be called
-  useEffect(() => {
+  useEffect(async() =>{
     // if wallet is not connected, create a new instance of Web3Modal and connect the MetaMask wallet
     if (!walletConnected) {
       // Assign the Web3Modal class to the reference object by setting it's `current` value
@@ -257,10 +257,10 @@ export default function Home() {
         providerOptions: {},
         disableInjectedProvider: false,
       });
-      connectWallet();
-      getTotalTokensMinted();
-      getBalanceOfCryptoDevTokens();
-      getTokensToBeClaimed();
+      await connectWallet();
+      await getTotalTokensMinted();
+      await getBalanceOfCryptoDevTokens();
+      await getTokensToBeClaimed();
     }
   }, [walletConnected]);
 
